@@ -16,7 +16,7 @@ GETTEXT_PACKAGE = projectagent
 PACKAGE = projectagent
 VERSION = 0.1
 
-SHELL = /bin/sh
+SHELL = /bin/bash
 
 
 srcdir = .
