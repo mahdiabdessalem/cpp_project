@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <gtk/gtk.h>
+#include <ctype.h> // Add this line
 
 const char *regions_urbaines[] = {
     "Tunis", "Sousse", "Sfax", "Ariana", "Bizerte", "Mannouba", "Nabeul", 
@@ -41,8 +42,7 @@ int verifier_date(date d) {
 }
 
 int verifier_cin(const char *cin) {
-    if (strlen(cin) != 8 )return 0;
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; cin[i] != '\0'; i++) {
         if (!isdigit(cin[i])) return 0;
     }
     return 1;
@@ -68,7 +68,11 @@ int ajouter(char *filename, agent a)
     FILE *f = fopen(filename, "a");
     if (f != NULL)
   { 
-    fprintf(f, "%s %s %s %s %s %s %s %s %s  %d %d %d %d %d %d %d \n", a.nom, a.prenom, a.cin, a.mail_dagent, a.num_telefone,a.region, a.ville, a.role_agent, a.parking_assigne, a.statut,a.dn.jour, a.dn.mois, a.dn.annee,a.db.jour, a.db.mois, a.db.annee);
+    fprintf(f, "%s %s %s %s %s %s %s %s %s %d %d %d %d %d %d %d\n", 
+            a.nom, a.prenom, a.cin, a.mail_dagent, a.num_telefone,
+            a.region, a.ville, a.role_agent, a.parking_assigne, 
+            a.statut, a.dn.jour, a.dn.mois, a.dn.annee,
+            a.db.jour, a.db.mois, a.db.annee);
 
       fclose(f);
     return 1;
@@ -171,7 +175,7 @@ agent cher(const char *filename, const char *cin) {
 }
 
 /*agent a = {0}; // Initialize all fields to zero or empty
-    FILE *f = fopen(filename, "r");
+    FILE *f = fopen(filename, "r"); 
 
     if (f != NULL) {
         while (fscanf(f, "%s %s %s %s %s %s %s %s %s %d %d %d %d %d %d %d",
@@ -322,102 +326,77 @@ reservation chercher_reservation_par_date(char *filename, date date_reservation)
 void setup_treeview(GtkWidget *treeview) {
     GtkCellRenderer *renderer;
     GtkTreeViewColumn *column;
-    GtkListStore *store;store = gtk_list_store_new(10, 
-        G_TYPE_STRING, // Nom
-        G_TYPE_STRING, // Prenom
-        G_TYPE_STRING, // CIN
-        G_TYPE_STRING, // Email
-        G_TYPE_STRING, // Telephone
-        G_TYPE_INT,    // Statut
-        G_TYPE_INT,    // DN: Jour
-        G_TYPE_INT,    // DN: Mois
-        G_TYPE_INT,    // DN: Annee
-        G_TYPE_STRING  // Role
-    );
+    GtkListStore *store;
 
-    // Attach the model to the TreeView
-    gtk_tree_view_set_model(GTK_TREE_VIEW(treeview), GTK_TREE_MODEL(store));
-// Debugging check to see if the model is set correctly
-    GtkTreeModel *model = gtk_tree_view_get_model(GTK_TREE_VIEW(treeview));
-    if (!model) {
-        g_warning("TreeView model is not set!");
-    } else {
-        g_print("TreeView model is set.\n");
-    }
-    g_object_unref(store); // Reduce ref count for the store
-
-    // Add columns for each field
+    // Create columns first
     renderer = gtk_cell_renderer_text_new();
 
-    column = gtk_tree_view_column_new_with_attributes("Nom", renderer, "text", 0, NULL);
-    gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), column);
+    // Define column names and create columns
+    const char *column_names[] = {
+        "Nom", "Prénom", "CIN", "Email", "Téléphone", 
+        "Region", "Ville", "Role", "Parking", "Statut",
+        "Jour N.", "Mois N.", "Année N.", 
+        "Jour D.", "Mois D.", "Année D."
+    };
 
-    column = gtk_tree_view_column_new_with_attributes("Prenom", renderer, "text", 1, NULL);
-    gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), column);
+    // Create store
+    store = gtk_list_store_new(16,
+        G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING,  // nom, prenom, cin
+        G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING,  // email, tel, region
+        G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING,  // ville, role, parking
+        G_TYPE_INT,                                   // statut
+        G_TYPE_INT, G_TYPE_INT, G_TYPE_INT,          // date naissance
+        G_TYPE_INT, G_TYPE_INT, G_TYPE_INT);         // date debut
 
-    column = gtk_tree_view_column_new_with_attributes("CIN", renderer, "text", 2, NULL);
-    gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), column);
+    gtk_tree_view_set_model(GTK_TREE_VIEW(treeview), GTK_TREE_MODEL(store));
 
-    column = gtk_tree_view_column_new_with_attributes("Email", renderer, "text", 3, NULL);
-    gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), column);
+    // Create all columns with proper attributes
+    for (int i = 0; i < 16; i++) {
+        column = gtk_tree_view_column_new_with_attributes(
+            column_names[i], renderer, "text", i, NULL);
+        gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), column);
+        gtk_tree_view_column_set_resizable(column, TRUE);
+        gtk_tree_view_column_set_sortable(column, TRUE);
+    }
 
-    column = gtk_tree_view_column_new_with_attributes("Telephone", renderer, "text", 4, NULL);
-    gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), column);
-
-    column = gtk_tree_view_column_new_with_attributes("Statut", renderer, "text", 5, NULL);
-    gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), column);
-
-    column = gtk_tree_view_column_new_with_attributes("DN: Jour", renderer, "text", 6, NULL);
-    gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), column);
-
-    column = gtk_tree_view_column_new_with_attributes("DN: Mois", renderer, "text", 7, NULL);
-    gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), column);
-
-    column = gtk_tree_view_column_new_with_attributes("DN: Annee", renderer, "text", 8, NULL);
-    gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), column);
-
-    column = gtk_tree_view_column_new_with_attributes("Role", renderer, "text", 9, NULL);
-    gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), column);
+    g_object_unref(store);
 }
+
 void load_agents_into_treeview(GtkWidget *treeview) {
     GtkListStore *store;
     GtkTreeIter iter;
-
-    FILE *file = fopen("agents.txt", "r");
-    if (!file) {
-        g_warning("Could not open agents.txt");
-        return;
-    } else {
-        g_print("File opened successfully\n");  // Debugging message
-    }
-
     agent a;
+    char line[1024];
+
+    // Get the store
     store = GTK_LIST_STORE(gtk_tree_view_get_model(GTK_TREE_VIEW(treeview)));
+    gtk_list_store_clear(store);
 
-    int read_count; // To track how many fields fscanf reads
-    char line[1024];  // Buffer to read lines (adjust size if needed)
+    FILE *f = fopen("agents.txt", "r");
+    if (!f) {
+        g_print("Error: Cannot open agents.txt\n");
+        return;
+    }
+    g_print("File opened successfully\n");
 
-    while (fgets(line, sizeof(line), file)) {
+    // Skip empty lines and properly parse each line
+    while (fgets(line, sizeof(line), f)) {
         // Skip empty lines
-        if (line[0] == '\0' || line[0] == '\n') {
-            continue;
-        }
+        if (strlen(line) <= 1) continue;
+        
+        // Remove trailing newline
+        line[strcspn(line, "\n")] = 0;
 
-        // Use sscanf instead of fscanf to read from the buffer line
-        read_count = sscanf(line, "%s %s %s %s %s %s %s %s %s %d %d %d %d %d %d %d",
-            a.nom, a.prenom, a.cin, a.mail_dagent, a.num_telefone, 
-            a.parking_assigne, a.ville, a.region, a.role_agent,
-            &a.statut, &a.dn.jour, &a.dn.mois, &a.dn.annee, 
+        // Parse the line with proper format specifiers and error checking
+        int read = sscanf(line, "%s %s %s %s %s %s %s %s %s %d %d %d %d %d %d %d",
+            a.nom, a.prenom, a.cin, a.mail_dagent, a.num_telefone,
+            a.region, a.ville, a.role_agent, a.parking_assigne,
+            &a.statut, &a.dn.jour, &a.dn.mois, &a.dn.annee,
             &a.db.jour, &a.db.mois, &a.db.annee);
 
-        // Debugging output: Print each field as sscanf reads it
-        g_print("Read %d fields: %s %s %s %s %s %s %s %s %d %d %d %d %d %d %d\n",
-            read_count, a.nom, a.prenom, a.cin, a.mail_dagent, a.num_telefone, 
-            a.parking_assigne, a.ville, a.region, a.statut, a.dn.jour, a.dn.mois, a.dn.annee, 
-            a.db.jour, a.db.mois, a.db.annee, a.role_agent);
+        g_print("Read %d fields: %s\n", read, line);
 
-        // If exactly 16 fields are read, append them to the list store
-        if (read_count == 16) {
+        if (read == 16) { // Only add if we read all fields successfully
             gtk_list_store_append(store, &iter);
             gtk_list_store_set(store, &iter,
                 0, a.nom,
@@ -425,108 +404,112 @@ void load_agents_into_treeview(GtkWidget *treeview) {
                 2, a.cin,
                 3, a.mail_dagent,
                 4, a.num_telefone,
-                5, a.statut,
-                6, a.dn.jour,
-                7, a.dn.mois,
-                8, a.dn.annee,
-                9, a.role_agent,
+                5, a.region,
+                6, a.ville,
+                7, a.role_agent,
+                8, a.parking_assigne,
+                9, a.statut,
+                10, a.dn.jour,
+                11, a.dn.mois,
+                12, a.dn.annee,
+                13, a.db.jour,
+                14, a.db.mois,
+                15, a.db.annee,
                 -1);
         } else {
-            g_warning("Failed to read 16 fields from line, only read %d", read_count);
+            g_print("WARNING: Failed to read 16 fields from line, only read %d\n", read);
         }
     }
 
-    fclose(file);
+    fclose(f);
+
+    // Make sure all columns are visible
+    GList *columns = gtk_tree_view_get_columns(GTK_TREE_VIEW(treeview));
+    for (GList *col = columns; col != NULL; col = col->next) {
+        gtk_tree_view_column_set_visible(GTK_TREE_VIEW_COLUMN(col->data), TRUE);
+    }
+    g_list_free(columns);
 }
 
-/*void load_agents_into_treeview(GtkWidget *treeview) {
+// Update the filter function to work with the new structure
+void filter_treeview_by_cin(GtkWidget *treeview, const char *cin_filter) {
+    if (!cin_filter || strlen(cin_filter) == 0) {
+        // If no filter, reload all data
+        load_agents_into_treeview(treeview);
+        return;
+    }
+
     GtkListStore *store;
     GtkTreeIter iter;
+    gboolean valid;
+    char *cin;
 
-    FILE *file = fopen("agents.txt", "r");
-    if (!file) {
-        g_warning("Could not open agents.txt");
-        return;
-    } else {
-        g_print("File opened successfully\n");  // Debugging message
-    }
-
-
-    agent a;
     store = GTK_LIST_STORE(gtk_tree_view_get_model(GTK_TREE_VIEW(treeview)));
-int read_count; // To track how many fields fscanf reads
-while ((read_count = fscanf(file, "%s %s %s %s %s %s %s %s %s %d %d %d %d %d %d %d", 
-        a.nom, a.prenom, a.cin, a.mail_dagent, a.num_telefone, 
-        a.parking_assigne, a.ville, a.region, a.role_agent,
-        &a.statut, &a.dn.jour, &a.dn.mois, &a.dn.annee, 
-        &a.db.jour, &a.db.mois, &a.db.annee)) != EOF) {
+    valid = gtk_tree_model_get_iter_first(GTK_TREE_MODEL(store), &iter);
 
-    // Debugging output: Print each field as fscanf reads it
-    g_print("Read %d fields: %s %s %s %s %s %s %s %s %d %d %d %d %d %d %d\n",
-        read_count, a.nom, a.prenom, a.cin, a.mail_dagent, a.num_telefone, 
-        a.parking_assigne, a.ville, a.region, a.statut, a.dn.jour, a.dn.mois, a.dn.annee, 
-        a.db.jour, a.db.mois, a.db.annee, a.role_agent);
-
-    // If exactly 16 fields are read, append them to the list store
-    if (read_count == 16) {
-        gtk_list_store_append(store, &iter);
-        gtk_list_store_set(store, &iter,
-            0, a.nom,
-            1, a.prenom,
-            2, a.cin,
-            3, a.mail_dagent,
-            4, a.num_telefone,
-            5, a.statut,
-            6, a.dn.jour,
-            7, a.dn.mois,
-            8, a.dn.annee,
-            9, a.role_agent,
-            -1);
-    } else {
-        g_warning("Failed to read 16 fields from line, only read %d", read_count);
+    while (valid) {
+        gtk_tree_model_get(GTK_TREE_MODEL(store), &iter, 2, &cin, -1);
+        
+        if (cin != NULL) {
+            if (strstr(cin, cin_filter) == NULL) {
+                valid = gtk_list_store_remove(store, &iter);
+            } else {
+                valid = gtk_tree_model_iter_next(GTK_TREE_MODEL(store), &iter);
+            }
+            g_free(cin);
+        } else {
+            valid = gtk_tree_model_iter_next(GTK_TREE_MODEL(store), &iter);
+        }
     }
 }
 
-fclose(file); }*/
+void apply_css_styling(GtkWidget *widget) {
+    GtkCssProvider *provider = gtk_css_provider_new();
+    gtk_css_provider_load_from_data(provider,
+        "treeview {"
+        "    font-family: 'Sans';"
+        "    font-size: 11px;"
+        "}"
+        "treeview:selected {"
+        "    background-color: #3584e4;"
+        "    color: white;"
+        "}"
+        "treeview header button {"
+        "    background-color: #f6f5f4;"
+        "    padding: 5px;"
+        "    font-weight: bold;"
+        "}", -1, NULL);
 
-   /* while (fscanf(file, "%s %s %s %s %s %d %d %d %d %d %d %d %d %s", 
-        a.nom, a.prenom, a.cin, a.mail_dagent, a.num_telefone, &a.statut, 
-        &a.dn.jour, &a.dn.mois, &a.dn.annee,  &a.db.jour,&a.db.mois,&a.db.annee,
-        a.role_agent) == 13) {
-/// Debugging output to see what is being read from the file
-        g_print("Read: %s %s %s %s %s %d %d %d %d %d %d %d %d %s\n", 
-                a.nom, a.prenom, a.cin, a.mail_dagent, a.num_telefone,
-                a.statut, a.dn.jour, a.dn.mois, a.dn.annee, 
-                a.db.jour, a.db.mois, a.db.annee, a.role_agent);
-
-        gtk_list_store_append(store, &iter);
-        gtk_list_store_set(store, &iter,
- 
-            0, a.nom,
-            1, a.prenom,
-            2, a.cin,
-            3, a.mail_dagent,
-            4, a.num_telefone,
-            5, a.statut,
-            6, a.dn.jour,
-            7, a.dn.mois,
-            8, a.dn.annee,
-            9, a.role_agent,
-            -1);
-    }
-// Check if fscanf didn't read all fields as expected
-    if (read_count != 13) {
-        g_warning("Warning: fscanf read %d fields instead of 13", read_count);
-    }
-    fclose(file);
+    GtkStyleContext *context = gtk_widget_get_style_context(widget);
+    gtk_style_context_add_provider(context,
+        GTK_STYLE_PROVIDER(provider),
+        GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+    g_object_unref(provider);
 }
-*/
-///afficher 
+
 void on_window_show(GtkWidget *widget, gpointer user_data) {
-    GtkWidget *treeview = lookup_widget(widget, "treeview_agents");
+    GtkBuilder *builder = gtk_builder_new();
+    gtk_builder_add_from_file(builder, "your_ui_file.ui", NULL);
+    GtkWidget *treeview = GTK_WIDGET(gtk_builder_get_object(builder, "treeview_agents"));
 
-    setup_treeview(treeview);   // Initialize the TreeView
-    load_agents_into_treeview(treeview); // Load data from file
+    // Ensure the treeview is set up correctly
+    GtkTreeViewColumn *column;
+    GtkCellRenderer *renderer;
+
+    renderer = gtk_cell_renderer_text_new();
+    column = gtk_tree_view_column_new_with_attributes("Column Title", renderer, "text", 0, NULL);
+    gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), column);
+
+    // Add your logic to populate the treeview with data from the database
+    GtkListStore *store = gtk_list_store_new(1, G_TYPE_STRING);
+    GtkTreeIter iter;
+
+    // Example data, replace with your database data
+    gtk_list_store_append(store, &iter);
+    gtk_list_store_set(store, &iter, 0, "Example Data", -1);
+
+    gtk_tree_view_set_model(GTK_TREE_VIEW(treeview), GTK_TREE_MODEL(store));
+    g_object_unref(store);
 }
 //////////////Function to filter TreeView based on CIN
 void filter_treeview_by_cin(GtkWidget *treeview, const char *cin_filter) {
